@@ -53,14 +53,28 @@ class TerminalModule(TerminalBase):
             return
 
         cmd = {u'command': u'enable'}
+        enable_prompt_re = r"[\r\n]?(User Name|Password): ?$"
+        prev_stdout_re = list(self.terminal_stdout_re)
         if passwd:
             # Note: python-3.5 cannot combine u"" and r"" together.  Thus make
             # an r string and use to_text to ensure it's text on both py2 and py3.
-            cmd[u'prompt'] = to_text(r"[\r\n]?password: ?$", errors='surrogate_or_strict')
-            cmd[u'answer'] = passwd
+            cmd[u'prompt'] = to_text(enable_prompt_re, errors='surrogate_or_strict')
+            cmd[u'newline'] = False
+            cmd[u'answer'] = u''
 
         try:
+            self.terminal_stdout_re.append(re.compile(enable_prompt_re))
             self._exec_cli_command(to_bytes(json.dumps(cmd), errors='surrogate_or_strict'))
+            self.terminal_stdout_re = prev_stdout_re
+            if passwd:
+                prompt = self._get_prompt()
+                cmd[u'newline'] = True
+                if 'User Name' in prompt:
+                    cmd[u'command'] = self._connection._play_context.remote_user
+                    cmd[u'answer'] = passwd
+                    self._exec_cli_command(to_bytes(json.dumps(cmd), errors='surrogate_or_strict'))
+                elif 'Password' in prompt:
+                    self._exec_cli_command(passwd)
         except AnsibleConnectionFailure:
             raise AnsibleConnectionFailure('unable to elevate privilege to enable mode')
 
