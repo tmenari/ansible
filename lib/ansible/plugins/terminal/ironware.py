@@ -70,7 +70,7 @@ class TerminalModule(TerminalBase):
                 prompt = self._get_prompt()
                 cmd[u'newline'] = True
                 if 'User Name' in prompt:
-                    cmd[u'command'] = self._connection._play_context.remote_user
+                    cmd[u'command'] = self._connection._play_context.become_user
                     cmd[u'answer'] = passwd
                     self._exec_cli_command(to_bytes(json.dumps(cmd), errors='surrogate_or_strict'))
                 elif 'Password' in prompt:
